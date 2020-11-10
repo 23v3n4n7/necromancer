@@ -1,0 +1,181 @@
+#!/bin/bash
+
+cat << EOF
+
+
+ ███▄    █ ▓█████  ▄████▄   ██▀███   ▒█████   ███▄ ▄███▓ ▄▄▄       ███▄    █  ▄████▄  ▓█████  ██▀███  
+ ██ ▀█   █ ▓█   ▀ ▒██▀ ▀█  ▓██ ▒ ██▒▒██▒  ██▒▓██▒▀█▀ ██▒▒████▄     ██ ▀█   █ ▒██▀ ▀█  ▓█   ▀ ▓██ ▒ ██▒
+▓██  ▀█ ██▒▒███   ▒▓█    ▄ ▓██ ░▄█ ▒▒██░  ██▒▓██    ▓██░▒██  ▀█▄  ▓██  ▀█ ██▒▒▓█    ▄ ▒███   ▓██ ░▄█ ▒
+▓██▒  ▐▌██▒▒▓█  ▄ ▒▓▓▄ ▄██▒▒██▀▀█▄  ▒██   ██░▒██    ▒██ ░██▄▄▄▄██ ▓██▒  ▐▌██▒▒▓▓▄ ▄██▒▒▓█  ▄ ▒██▀▀█▄  
+▒██░   ▓██░░▒████▒▒ ▓███▀ ░░██▓ ▒██▒░ ████▓▒░▒██▒   ░██▒ ▓█   ▓██▒▒██░   ▓██░▒ ▓███▀ ░░▒████▒░██▓ ▒██▒
+░ ▒░   ▒ ▒ ░░ ▒░ ░░ ░▒ ▒  ░░ ▒▓ ░▒▓░░ ▒░▒░▒░ ░ ▒░   ░  ░ ▒▒   ▓▒█░░ ▒░   ▒ ▒ ░ ░▒ ▒  ░░░ ▒░ ░░ ▒▓ ░▒▓░
+░ ░░   ░ ▒░ ░ ░  ░  ░  ▒     ░▒ ░ ▒░  ░ ▒ ▒░ ░  ░      ░  ▒   ▒▒ ░░ ░░   ░ ▒░  ░  ▒    ░ ░  ░  ░▒ ░ ▒░
+   ░   ░ ░    ░   ░          ░░   ░ ░ ░ ░ ▒  ░      ░     ░   ▒      ░   ░ ░ ░           ░     ░░   ░ 
+         ░    ░  ░░ ░         ░         ░ ░         ░         ░  ░         ░ ░ ░         ░  ░   ░     
+                  ░                                                          ░                        
+
+By 7h3 23v3n4n7
+I'm not responsible for what you do with this software. ;)
+EOF
+
+SHOW_HELP=0
+FULL_RECON=1
+DNS_RECON=0
+TECH_RECON=0
+CMS_TYPE="Unknown"
+PORT_RECON=0
+VULN_RECON=0
+SKIP_DNS=0
+SKIP_TECH=0
+SKIP_PORT=0
+SKIP_VULN=0
+SAVE_FILE=0
+TIMESTAMP="$(date +%s)"
+FILENAME="/tmp/necromancer-${TIMESTAMP}.txt"
+TARGET=""
+SCAN_TYPE="FULL"
+
+basic_usage () {
+	echo << EOF
+	
+	EOF
+}
+
+extended_usage () {
+	echo << EOF
+	
+	EOF
+}
+
+for arg in "$@"
+do
+	case $arg in
+		-h)
+			basic_usage
+		;;
+		--help)
+			extended_usage
+		;;
+		-t|--target)
+			shift
+			TARGET="$1"
+		;;
+		-f|--full)
+			shift
+			FULL_RECON=1
+		;;
+		-d|--dns)
+			shift
+			DNS_RECON=1
+			FULL_RECON=0
+		;;
+		-i|--tech)
+			shift
+			TECH_RECON=1
+			FULL_RECON=0
+		;;
+		-ps|--port-scan)
+			shift
+			PORT_RECON=1
+			FULL_RECON=0
+		;;
+		-vs|--vuln-scan)
+			shift
+			VULN_RECON=1
+			FULL_RECON=0
+		;;
+		-sd|--skip-dns)
+			shift
+			SKIP_DNS=1
+		;;
+		-st|--skip-tech)
+			shift
+			SKIP_TECH=1
+		;;
+		-sp|--skip-ports)
+			shift
+			SKIP_PORT=1
+		;;
+		-sv|--skip-vuln)
+			shift
+			SKIP_VULN=1
+		;;
+		-o|--output)
+			shift
+			SAVE_FILE=1
+			FILE_NAME="$2"
+		;;
+	esac
+done
+
+if [[ $DNS_RECON == 1 ]]; then
+	SCAN_TYPE="DNS"
+fi
+if [[ $TECH_RECON == 1 ]]; then
+	SCAN_TYPE="TECH"
+fi
+if [[ $PORT_RECON == 1 ]]; then
+	SCAN_TYPE="PORT"
+fi
+if [[ "${VULN_RECON}" == "1" ]]; then
+	SCAN_TYPE="VULN"
+fi
+
+echo
+echo "-------------------------------------------------"
+echo "# TARGET: ${TARGET}"
+echo "# SCAN TYPE: ${SCAN_TYPE}"
+echo "-------------------------------------------------"
+echo
+
+if [[ $FULL_RECON == 1 || $DNS_RECON == 1 ]]; then
+	if [[ ! $SKIP_DNS == 1 ]]; then
+		echo "DNS SCAN"
+		if [[ $SAVE_FILE == 1 ]]; then
+			dnsrecon -d ${TARGET} -asgbkz | tee -a ${FILENAME}
+		else
+			dnsrecon -d ${TARGET} -asgbkz
+		fi
+	fi
+fi
+
+if [[ $FULL_RECON == 1 || $TECH_RECON == 1 ]]; then
+	if [[ ! $SKIP_TECH == 1 ]]; then
+		echo "TECH SCAN"
+		if [[ $SAVE_FILE == 1 ]]; then
+			whatweb ${TARGET} | tee -a ${FILENAME}
+		else
+			whatweb ${TARGET}
+		fi
+		if [[ whatweb ${TARGET} | grep wordpress ]]; then
+			CMS_TYPE="WordPress"
+		fi
+		if [[ whatweb ${TARGET} | grep joomla ]]; then
+			CMS_TYPE="Joomla"
+		fi
+	fi
+fi
+
+if [[ $FULL_RECON == 1 || $PORT_RECON == 1 ]]; then
+	if [[ ! $SKIP_PORT == 1 ]]; then
+		echo "PORT SCAN"
+		if [[ $SAVE_FILE == 1 ]]; then
+			nmap -vvv -sV ${TARGET} | tee -a ${FILENAME}
+		else
+			nmap -vvv -sV ${TARGET}
+		fi
+	fi
+fi
+
+if [[ $FULL_RECON == 1 || $VULN_RECON == 1 ]]; then
+	if [[ ! $SKIP_VULN == 1 ]]; then
+		echo "VULN SCAN"
+		if [[ $SAVE_FILE == 1 ]]; then
+			nmap -vvv -A ${TARGET} | tee -a ${FILENAME}
+		else
+			nmap -vvv -A ${TARGET}
+		fi
+	fi
+fi
+
+exit
