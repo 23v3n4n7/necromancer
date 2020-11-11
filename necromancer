@@ -13,8 +13,9 @@ cat << EOF
    ░   ░ ░    ░   ░          ░░   ░ ░ ░ ░ ▒  ░      ░     ░   ▒      ░   ░ ░ ░           ░     ░░   ░ 
          ░    ░  ░░ ░         ░         ░ ░         ░         ░  ░         ░ ░ ░         ░  ░   ░     
                   ░                                                          ░                        
+Version: 0.0.1
 
-By 7h3 23v3n4n7
+By @23vs3c
 I'm not responsible for what you do with this software. ;)
 EOF
 
@@ -37,14 +38,46 @@ SCAN_TYPE="FULL"
 
 basic_usage () {
 	echo << EOF
-	
-	EOF
+Usage: ./necromancer [options] <target>
+[Options]
+Note: Full scan mode is enabled by default.
+
+General:
+  -h			Display this help screen.
+  --help		Display extended help.
+Scan:
+  -f, --full		Extensive extended scan of target.
+  -d, --dns		DNS scan of target.
+  -t, --tech		Technologies scan of target.
+  -ps, --port-scan	Port scan
+  -vs, --vuln-scan	Vulnerability scan
+EOF
+	exit
 }
 
 extended_usage () {
 	echo << EOF
-	
-	EOF
+Usage: ./necromancer [options] <target>
+[Options]
+Note: Full scan mode is enabled by default.
+
+General:
+  -h			Display this help screen.
+  --help		Display extended help.
+Scan:
+  -f, --full		Extensive extended scan of target.
+  -d, --dns		DNS scan of target.
+  -t, --tech		Technologies scan of target.
+  -ps, --port-scan	Port scan
+  -vs, --vuln-scan	Vulnerability scan
+  -sd, --skip-dns	Skip the DNS scan. Used in conjunction with -f/--full.
+  -st, --skip-tech	Skip technology scan. Used in conjunction with -f/--full.
+  -sp, --skip-ports	Skip port scan. Used in conjunction with -f/--full.
+  -sv, --skip-vuln	Skip vulnerability scan. Used in conjunction with -f/--full.
+Output:
+  -o, --output <file>	Output all data to the specified file.
+EOF
+	exit
 }
 
 for arg in "$@"
@@ -56,9 +89,10 @@ do
 		--help)
 			extended_usage
 		;;
-		-t|--target)
+		-w|--waf)
 			shift
-			TARGET="$1"
+			WAF_SCAN=1
+			FULL_RECON=0
 		;;
 		-f|--full)
 			shift
@@ -69,7 +103,7 @@ do
 			DNS_RECON=1
 			FULL_RECON=0
 		;;
-		-i|--tech)
+		-t|--tech)
 			shift
 			TECH_RECON=1
 			FULL_RECON=0
@@ -103,11 +137,22 @@ do
 		-o|--output)
 			shift
 			SAVE_FILE=1
-			FILE_NAME="$2"
+			FILENAME="$2"
+			shift
 		;;
+		*)
+			TARGET="$1"
 	esac
 done
 
+if [[ $TARGET == "" ]]; then
+	echo "You must specify a target."
+	basic_usage
+fi
+
+if [[ $WAF_RECON == 1 ]]; then
+	SCAN_TYPE="WAF"
+fi
 if [[ $DNS_RECON == 1 ]]; then
 	SCAN_TYPE="DNS"
 fi
@@ -117,8 +162,12 @@ fi
 if [[ $PORT_RECON == 1 ]]; then
 	SCAN_TYPE="PORT"
 fi
-if [[ "${VULN_RECON}" == "1" ]]; then
+if [[ ${VULN_RECON} == 1 ]]; then
 	SCAN_TYPE="VULN"
+fi
+
+if [[ ${SAVE_FILE} == 1 ]]; then
+	touch $FILENAME
 fi
 
 echo
@@ -128,9 +177,24 @@ echo "# SCAN TYPE: ${SCAN_TYPE}"
 echo "-------------------------------------------------"
 echo
 
+if [[ $FULL_RECON == 1 || $WAF_RECON == 1 ]]; then
+	if [[ ! $SKIP_WAF == 1 ]]; then
+		echo
+		echo "=========== WAF SCAN ==========="
+		echo
+		if [[ $SAVE_FILE == 1 ]]; then
+			wafw00f ${TARGET} | tee -a ${FILENAME}
+		else
+			wafw00f ${TARGET}
+		fi
+	fi
+fi
+
 if [[ $FULL_RECON == 1 || $DNS_RECON == 1 ]]; then
 	if [[ ! $SKIP_DNS == 1 ]]; then
-		echo "DNS SCAN"
+		echo
+		echo "=========== DNS SCAN ==========="
+		echo
 		if [[ $SAVE_FILE == 1 ]]; then
 			dnsrecon -d ${TARGET} -asgbkz | tee -a ${FILENAME}
 		else
@@ -141,39 +205,36 @@ fi
 
 if [[ $FULL_RECON == 1 || $TECH_RECON == 1 ]]; then
 	if [[ ! $SKIP_TECH == 1 ]]; then
-		echo "TECH SCAN"
+		echo
+		echo "=========== TECH SCAN ==========="
+		echo
 		if [[ $SAVE_FILE == 1 ]]; then
 			whatweb ${TARGET} | tee -a ${FILENAME}
 		else
 			whatweb ${TARGET}
 		fi
-		if [[ whatweb ${TARGET} | grep wordpress ]]; then
-			CMS_TYPE="WordPress"
-		fi
-		if [[ whatweb ${TARGET} | grep joomla ]]; then
-			CMS_TYPE="Joomla"
-		fi
 	fi
 fi
 
-if [[ $FULL_RECON == 1 || $PORT_RECON == 1 ]]; then
-	if [[ ! $SKIP_PORT == 1 ]]; then
-		echo "PORT SCAN"
-		if [[ $SAVE_FILE == 1 ]]; then
-			nmap -vvv -sV ${TARGET} | tee -a ${FILENAME}
-		else
-			nmap -vvv -sV ${TARGET}
-		fi
-	fi
-fi
-
-if [[ $FULL_RECON == 1 || $VULN_RECON == 1 ]]; then
-	if [[ ! $SKIP_VULN == 1 ]]; then
-		echo "VULN SCAN"
+if [[ $FULL_RECON == 1 || $VULN_RECON == 1 || $PORT_RECON == 1 ]]; then
+	if [[ $FULL_RECON == 1 || $VULN_RECON == 1 ]]; then
+		echo
+		echo "=========== VULN SCAN ==========="
+		echo
 		if [[ $SAVE_FILE == 1 ]]; then
 			nmap -vvv -A ${TARGET} | tee -a ${FILENAME}
 		else
 			nmap -vvv -A ${TARGET}
+		fi
+	fi
+	if [[ $PORT_RECON == 1 ]]; then
+		echo
+		echo "=========== PORT SCAN ==========="
+		echo
+		if [[ $SAVE_FILE == 1 ]]; then
+			nmap -vvv -sV ${TARGET} | tee -a ${FILENAME}
+		else
+			nmap -vvv -sV ${TARGET}
 		fi
 	fi
 fi
