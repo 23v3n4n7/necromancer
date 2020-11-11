@@ -1,4 +1,4 @@
-# necromancer (Work-In-Progress)
+# necromancer
 A tool to chain basic enumeration utilities
 
 **_Tested in Kali 2020.3_**  
